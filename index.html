@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>그림으로 푸는 원과 직선</title>
+    
+    <style>
+        body { 
+            font-family: 'Noto Sans KR', sans-serif; 
+            text-align: center; 
+            background-color: #e3f2fd; 
+            padding: 20px; 
+            margin: 0;
+            color: #333;
+        }
+        #game-container { 
+            background: white; 
+            max-width: 500px; 
+            margin: 0 auto; 
+            padding: 30px 20px; 
+            border-radius: 20px; 
+            box-shadow: 0 8px 20px rgba(33, 150, 243, 0.15); 
+            position: relative;
+        }
+        h1 { font-size: 24px; margin-bottom: 5px; color: #1976d2; }
+        .subtitle { font-size: 14px; color: #666; margin-bottom: 20px; }
+        
+        .hidden { display: none !important; }
+
+        .screen-box {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 350px;
+        }
+        
+        .big-btn {
+            background-color: #2196f3;
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 22px;
+            font-weight: bold;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: 0.3s;
+            box-shadow: 0 4px 10px rgba(33, 150, 243, 0.3);
+            margin-top: 20px;
+        }
+        .big-btn:hover { background-color: #1565c0; transform: translateY(-2px); }
+
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            font-size: 18px;
+            font-weight: bold;
+            background: #e3f2fd;
+            padding: 12px 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            color: #1565c0;
+        }
+        .time-warning { color: #d32f2f; animation: pulse 1s infinite; }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .svg-container {
+            width: 100%;
+            max-width: 260px;
+            margin: 0 auto 20px auto;
+            background: #fafafa;
+            border-radius: 15px;
+            padding: 15px;
+            border: 2px solid #bbdefb;
+        }
+
+        .options-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            width: 100%;
+            margin-bottom: 10px;
+        }
+        
+        .option-btn {
+            background-color: #ffffff;
+            color: #1976d2;
+            border: 2px solid #2196f3;
+            padding: 15px;
+            font-size: 24px;
+            font-weight: bold;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        
+        .option-btn:hover { background-color: #e3f2fd; }
+        
+        .option-btn.correct-btn { background-color: #4caf50 !important; color: white !important; border-color: #4caf50 !important; }
+        .option-btn.wrong-btn { background-color: #f44336 !important; color: white !important; border-color: #f44336 !important; animation: shake 0.4s; }
+
+        @keyframes shake {
+            0% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            50% { transform: translateX(5px); }
+            75% { transform: translateX(-5px); }
+            100% { transform: translateX(0); }
+        }
+
+        #message { font-size: 18px; font-weight: bold; margin-top: 10px; min-height: 25px; }
+        .correct-text { color: #2e7d32; }
+        .wrong-text { color: #c62828; }
+        
+        #final-score { font-size: 50px; color: #1976d2; margin: 20px 0; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <h1>👀 그림으로 푸는 $x$ 찾기</h1>
+    <div class="subtitle">문장 없이 눈치껏 맞혀보자!</div>
+
+    <!-- 1. 시작 화면 -->
+    <div id="start-screen" class="screen-box">
+        <div class="svg-container" style="border:none; background:transparent;">
+            <!-- 장식용 이미지 -->
+            <svg viewBox="0 0 100 100" width="120" height="120">
+                <circle cx="50" cy="50" r="40" fill="none" stroke="#2196f3" stroke-width="4"/>
+                <line x1="20" y1="75" x2="80" y2="75" stroke="#2c3e50" stroke-width="4"/>
+                <line x1="50" y1="50" x2="50" y2="75" stroke="#e74c3c" stroke-width="3" stroke-dasharray="2"/>
+                <text x="55" y="68" font-size="20" fill="#2196f3" font-weight="bold">x</text>
+            </svg>
+        </div>
+        <p style="font-size: 16px; color:#555; line-height:1.5;">
+            복잡한 설명은 뺐습니다.<br>
+            <strong>그림 속 $x$의 값</strong>을 60초 안에 찾아주세요!
+        </p>
+        <button class="big-btn" onclick="startGame()">도전 시작!</button>
+    </div>
+
+    <!-- 2. 게임 화면 -->
+    <div id="play-screen" class="hidden">
+        <div class="status-bar">
+            <div>⏰ <span id="time-left">60</span>초</div>
+            <div>⭐ <span id="score">0</span>점</div>
+        </div>
+
+        <div id="question-box" class="svg-container"></div>
+        <div class="options-grid" id="options-container"></div>
+        <div id="message"></div>
+    </div>
+
+    <!-- 3. 결과 화면 -->
+    <div id="result-screen" class="screen-box hidden">
+        <h2>⏰ 시간 종료!</h2>
+        <p style="color:#555;">도형을 보는 눈이 아주 좋아졌어요!</p>
+        <div id="final-score">0점</div>
+        <button class="big-btn" onclick="startGame()">다시 도전하기</button>
+    </div>
+</div>
+
+<script>
+    // 그림(SVG)으로만 이루어진 문제 세트
+    const questions = [
+        // 1. 현의 절반 길이 (3-4-5)
+        { 
+            svg: `
+            <svg viewBox="0 0 200 200" width="100%" height="100%">
+                <circle cx="100" cy="100" r="70" fill="none" stroke="#333" stroke-width="3"/>
+                <circle cx="100" cy="100" r="4" fill="#333"/>
+                <line x1="44" y1="142" x2="156" y2="142" stroke="#333" stroke-width="3"/>
+                <line x1="100" y1="100" x2="100" y2="142" stroke="#e74c3c" stroke-width="3" stroke-dasharray="4"/>
+                <line x1="100" y1="100" x2="156" y2="142" stroke="#333" stroke-width="2"/>
+                <polyline points="100,132 110,132 110,142" fill="none" stroke="#333" stroke-width="2"/>
+                <text x="80" y="125" font-size="18" fill="#e74c3c" font-weight="bold">3</text>
+                <text x="135" y="115" font-size="18" fill="#333" font-weight="bold">5</text>
+                <text x="125" y="165" font-size="22" fill="#2196f3" font-weight="bold">x</text>
+            </svg>`, 
+            options: ["3", "4", "5", "8"], answer: "4" 
+        },
+        // 2. 현의 전체 길이 (3-4-5)
+        { 
+            svg: `
+            <svg viewBox="0 0 200 200" width="100%" height="100%">
+                <circle cx="100" cy="100" r="70" fill="none" stroke="#333" stroke-width="3"/>
+                <circle cx="100" cy="100" r="4" fill="#333"/>
+                <line x1="44" y1="142" x2="156" y2="142" stroke="#333" stroke-width="3"/>
+                <line x1="100" y1="100" x2="100" y2="142" stroke="#e74c3c" stroke-width="3" stroke-dasharray="4"/>
+                <line x1="100" y1="100" x2="156" y2="142" stroke="#333" stroke-width="2"/>
+                <polyline points="100,132 110,132 110,142" fill="none" stroke="#333" stroke-width="2"/>
+                <text x="80" y="125" font-size="18" fill="#e74c3c" font-weight="bold">3</text>
+                <text x="135" y="115" font-size="18" fill="#333" font-weight="bold">5</text>
+                <!-- x 표시 (전체 현) -->
+                <line x1="44" y1="155" x2="44" y2="165" stroke="#2196f3" stroke-width="2"/>
+                <line x1="156" y1="155" x2="156" y2="165" stroke="#2196f3" stroke-width="2"/>
+                <line x1="44" y1="160" x2="156" y2="160" stroke="#2196f3" stroke-width="2"/>
+                <text x="95" y="180" font-size="22" fill="#2196f3" font-weight="bold">x</text>
+            </svg>`, 
+            options: ["4", "6", "8", "10"], answer: "8" 
+        },
+        // 3. 접선의 길이 일치
+        { 
+            svg: `
+            <svg viewBox="0 0 200 200" width="100%" height="100%">
+                <circle cx="140" cy="100" r="45" fill="none" stroke="#333" stroke-width="3"/>
+                <circle cx="140" cy="100" r="4" fill="#333"/>
+                <circle cx="30" cy="100" r="4" fill="#e74c3c"/>
+                <line x1="30" y1="100" x2="120" y2="59" stroke="#333" stroke-width="3"/>
+                <line x1="30" y1="100" x2="120" y2="141" stroke="#333" stroke-width="3"/>
+                <text x="65" y="65" font-size="20" fill="#333" font-weight="bold">7</text>
+                <text x="65" y="148" font-size="24" fill="#2196f3" font-weight="bold">x</text>
+            </svg>`, 
+            options: ["5", "6", "7", "14"], answer: "7" 
+        },
+        // 4. 접선과 반지름이 이루는 각도 (90도)
+        { 
+            svg: `
+            <svg viewBox="0 0 200 200" width="100%" height="100%">
+                <circle cx="100" cy="80" r="60" fill="none" stroke="#333" stroke-width="3"/>
+                <circle cx="100" cy="80" r="4" fill="#333"/>
+                <line x1="20" y1="140" x2="180" y2="140" stroke="#333" stroke-width="3"/>
+                <line x1="100" y1="80" x2="100" y2="140" stroke="#e74c3c" stroke-width="3"/>
+                <circle cx="100" cy="140" r="4" fill="#e74c3c"/>
+                <!-- 각도 표시 -->
+                <path d="M 115 140 A 15 15 0 0 0 100 125" fill="none" stroke="#2196f3" stroke-width="3"/>
+                <text x="110" y="120" font-size="22" fill="#2196f3" font-weight="bold">x°</text>
+            </svg>`, 
+            options: ["45", "60", "90", "180"], answer: "90" 
+        },
+        // 5. 접선과 피타고라스 (5-12-13)
+        { 
+            svg: `
+            <svg viewBox="0 0 200 200" width="100%" height="100%">
+                <circle cx="140" cy="70" r="60" fill="none" stroke="#333" stroke-width="3"/>
+                <circle cx="140" cy="70" r="4" fill="#333"/>
+                <line x1="30" y1="130" x2="160" y2="130" stroke="#333" stroke-width="3"/>
+                <circle cx="30" cy="130" r="4" fill="#e74c3c"/>
+                <line x1="140" y1="70" x2="140" y2="130" stroke="#e74c3c" stroke-width="3" stroke-dasharray="4"/>
+                <polyline points="130,130 130,120 140,120" fill="none" stroke="#333" stroke-width="2"/>
+                <line x1="140" y1="70" x2="30" y2="130" stroke="#333" stroke-width="2"/>
+                <text x="145" y="105" font-size="18" fill="#e74c3c" font-weight="bold">5</text>
+                <text x="75" y="90" font-size="18" fill="#333" font-weight="bold">13</text>
+                
+                <!-- x 표시 (접선 길이) -->
+                <line x1="30" y1="140" x2="30" y2="150" stroke="#2196f3" stroke-width="2"/>
+                <line x1="140" y1="140" x2="140" y2="150" stroke="#2196f3" stroke-width="2"/>
+                <line x1="30" y1="145" x2="140" y2="145" stroke="#2196f3" stroke-width="2"/>
+                <text x="80" y="165" font-size="22" fill="#2196f3" font-weight="bold">x</text>
+            </svg>`, 
+            options: ["8", "10", "12", "15"], answer: "12" 
+        },
+        // 6. 같은 길이의 현과 거리
+        { 
+            svg: `
+            <svg viewBox="0 0 200 200" width="100%" height="100%">
+                <circle cx="100" cy="100" r="75" fill="none" stroke="#333" stroke-width="3"/>
+                <circle cx="100" cy="100" r="4" fill="#333"/>
+                <line x1="40" y1="55" x2="160" y2="55" stroke="#333" stroke-width="3"/>
+                <line x1="40" y1="145" x2="160" y2="145" stroke="#333" stroke-width="3"/>
+                
+                <!-- 현이 같다는 표시 (||) -->
+                <line x1="97" y1="45" x2="97" y2="65" stroke="#333" stroke-width="2"/>
+                <line x1="103" y1="45" x2="103" y2="65" stroke="#333" stroke-width="2"/>
+                <line x1="97" y1="135" x2="97" y2="155" stroke="#333" stroke-width="2"/>
+                <line x1="103" y1="135" x2="103" y2="155" stroke="#333" stroke-width="2"/>
+                
+                <!-- 중심으로부터의 거리 -->
+                <line x1="100" y1="100" x2="100" y2="55" stroke="#e74c3c" stroke-width="2" stroke-dasharray="4"/>
+                <line x1="100" y1="100" x2="100" y2="145" stroke="#2196f3" stroke-width="2" stroke-dasharray="4"/>
+                
+                <polyline points="100,65 110,65 110,55" fill="none" stroke="#333" stroke-width="2"/>
+                <polyline points="100,135 110,135 110,145" fill="none" stroke="#333" stroke-width="2"/>
+                
+                <text x="75" y="85" font-size="18" fill="#e74c3c" font-weight="bold">6</text>
+                <text x="75" y="130" font-size="22" fill="#2196f3" font-weight="bold">x</text>
+            </svg>`, 
+            options: ["3", "4", "6", "12"], answer: "6" 
+        }
+    ];
+
+    let currentQuestion = null;
+    let score = 0;
+    let timeLeft = 60;
+    let timerInterval = null;
+    let isAnswering = false; 
+
+    function showScreen(screenId) {
+        document.getElementById('start-screen').classList.add('hidden');
+        document.getElementById('play-screen').classList.add('hidden');
+        document.getElementById('result-screen').classList.add('hidden');
+        document.getElementById(screenId).classList.remove('hidden');
+    }
+
+    function startGame() {
+        score = 0;
+        timeLeft = 60;
+        document.getElementById('score').innerText = score;
+        document.getElementById('time-left').innerText = timeLeft;
+        document.getElementById('time-left').classList.remove('time-warning');
+        
+        showScreen('play-screen');
+        nextQuestion();
+        
+        clearInterval(timerInterval);
+        timerInterval = setInterval(() => {
+            timeLeft--;
+            const timeSpan = document.getElementById('time-left');
+            timeSpan.innerText = timeLeft;
+            
+            if (timeLeft <= 10) timeSpan.classList.add('time-warning');
+            if (timeLeft <= 0) endGame();
+        }, 1000);
+    }
+
+    function endGame() {
+        clearInterval(timerInterval);
+        document.getElementById('final-score').innerText = score + "점";
+        showScreen('result-screen');
+    }
+
+    function nextQuestion() {
+        if (timeLeft <= 0) return;
+        isAnswering = false;
+        document.getElementById('message').innerText = '';
+        
+        // 문제 랜덤 선택
+        const randomIndex = Math.floor(Math.random() * questions.length);
+        currentQuestion = questions[randomIndex];
+        
+        // SVG 이미지 렌더링
+        document.getElementById('question-box').innerHTML = currentQuestion.svg;
+        
+        // 보기 섞기
+        let shuffledOptions = [...currentQuestion.options];
+        shuffledOptions.sort(() => Math.random() - 0.5);
+
+        const container = document.getElementById('options-container');
+        container.innerHTML = ''; 
+
+        // 버튼 생성
+        shuffledOptions.forEach(opt => {
+            const btn = document.createElement('button');
+            btn.className = 'option-btn';
+            btn.innerText = opt;
+            btn.onclick = () => checkAnswer(btn, opt);
+            container.appendChild(btn);
+        });
+    }
+
+    function checkAnswer(clickedBtn, selectedAnswer) {
+        if (isAnswering || timeLeft <= 0) return; 
+        isAnswering = true;
+
+        const messageEl = document.getElementById('message');
+
+        if (selectedAnswer === currentQuestion.answer) {
+            clickedBtn.classList.add('correct-btn');
+            messageEl.innerText = "🎉 딩동댕! 아주 직관적이에요!";
+            messageEl.className = "correct-text";
+            score += 10;
+            document.getElementById('score').innerText = score;
+            
+            setTimeout(nextQuestion, 500); 
+        } else {
+            clickedBtn.classList.add('wrong-btn');
+            messageEl.innerText = "❌ 직각삼각형을 잘 찾아보세요!";
+            messageEl.className = "wrong-text";
+            
+            // 진짜 정답 표시하기
+            const allBtns = document.querySelectorAll('.option-btn');
+            allBtns.forEach(btn => {
+                if(btn.innerText === currentQuestion.answer) {
+                    btn.classList.add('correct-btn');
+                }
+            });
+            
+            setTimeout(nextQuestion, 1500);
+        }
+    }
+</script>
+
+</body>
+</html>
