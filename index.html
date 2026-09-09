@@ -33,11 +33,11 @@ let score = 0, currentAnswer = 0;
 
 function generateProblem() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    const cx = 165, cy = 100, R = 65;
+    const cx = 165, cy = 100, R_pixel = 75; // 화면에 그려질 원의 반지름 (픽셀)
 
     // 원 그리기
     ctx.beginPath();
-    ctx.arc(cx, cy, R, 0, 2 * Math.PI);
+    ctx.arc(cx, cy, R_pixel, 0, 2 * Math.PI);
     ctx.strokeStyle = '#222';
     ctx.lineWidth = 2;
     ctx.stroke();
@@ -55,55 +55,63 @@ function generateProblem() {
 
     if (type === 0) {
         // 유형 1: 반지름과 거리가 주어질 때 현의 길이
-        const dVals = [3, 4, 6, 8];
-        const xVals = [4, 3, 8, 6];
-        const idx = Math.floor(Math.random() * dVals.length);
-        const d = dVals[idx], x = xVals[idx], r = Math.sqrt(d*d + x*x);
-        ans = 2 * x;
+        const dataList = [
+            {r: 5, d: 3, x: 4},
+            {r: 10, d: 6, x: 8},
+            {r: 13, d: 5, x: 12},
+            {r: 10, d: 8, x: 6}
+        ];
+        const data = dataList[Math.floor(Math.random() * dataList.length)];
+        ans = 2 * data.x;
 
-        // 현과 수선 그리기
-        const hY = cy + d, halfL = x;
-        drawChordAndPerpendicular(cx, cy, hY, halfL, r, d);
-        qText = `반지름 r = ${r}, 거리 OH = ${d} 일 때, 현 AB의 길이는?`;
+        drawChord(cx, cy, R_pixel, data.r, data.d, data.x, data.r, data.d);
+        qText = `반지름 r = ${data.r}, 거리 OH = ${data.d} 일 때, 현 AB의 길이는?`;
 
     } else if (type === 1) {
         // 유형 2: 반지름과 현의 길이가 주어질 때 거리
-        const rVals = [5, 10, 13];
-        const xVals = [3, 6, 5];
-        const idx = Math.floor(Math.random() * rVals.length);
-        const r = rVals[idx], x = xVals[idx], d = Math.sqrt(r*r - x*x);
-        ans = d;
+        const dataList = [
+            {r: 5, x: 3, d: 4},
+            {r: 10, x: 8, d: 6},
+            {r: 13, x: 5, d: 12},
+            {r: 10, x: 6, d: 8}
+        ];
+        const data = dataList[Math.floor(Math.random() * dataList.length)];
+        ans = data.d;
 
-        const hY = cy + d, halfL = x;
-        drawChordAndPerpendicular(cx, cy, hY, halfL, r, "?");
-        qText = `반지름 r = ${r}, 현 AB = ${2*x} 일 때, 거리 OH는?`;
+        drawChord(cx, cy, R_pixel, data.r, data.d, data.x, data.r, "?");
+        qText = `반지름 r = ${data.r}, 현 AB = ${2*data.x} 일 때, 거리 OH는?`;
 
     } else {
         // 유형 3: 길이가 같은 두 현
         const d = Math.floor(Math.random() * 5) + 3;
         ans = d;
         
+        let r = 13;
+        let x = Math.sqrt(r*r - d*d);
+        let scale = R_pixel / r;
+        let d_p = d * scale;
+        let halfL_p = x * scale;
+
         // 평행한 두 현 그리기
-        const halfL = Math.sqrt(R*R - d*d);
         ctx.beginPath();
-        ctx.moveTo(cx - halfL, cy - d); ctx.lineTo(cx + halfL, cy - d);
-        ctx.moveTo(cx - halfL, cy + d); ctx.lineTo(cx + halfL, cy + d);
+        ctx.moveTo(cx - halfL_p, cy - d_p); ctx.lineTo(cx + halfL_p, cy - d_p);
+        ctx.moveTo(cx - halfL_p, cy + d_p); ctx.lineTo(cx + halfL_p, cy + d_p);
         ctx.strokeStyle = '#222'; ctx.lineWidth = 2; ctx.stroke();
 
+        // 중심에서 내린 수선
         ctx.beginPath();
-        ctx.moveTo(cx, cy); ctx.lineTo(cx, cy - d);
-        ctx.moveTo(cx, cy); ctx.lineTo(cx, cy + d);
+        ctx.moveTo(cx, cy); ctx.lineTo(cx, cy - d_p);
+        ctx.moveTo(cx, cy); ctx.lineTo(cx, cy + d_p);
         ctx.strokeStyle = '#d32f2f'; ctx.setLineDash([3,3]); ctx.stroke(); ctx.setLineDash([]);
 
         ctx.font = '12px sans-serif'; ctx.fillStyle = '#d32f2f';
-        ctx.fillText(`${d}cm`, cx + 4, cy - d/2);
+        ctx.fillText(`${d}cm`, cx + 6, cy - d_p/2);
         qText = `두 현의 길이가 같고 한 거리가 ${d}cm일 때, 다른 현까지의 거리는?`;
     }
 
     currentAnswer = ans;
     document.getElementById('q-txt').innerText = qText;
 
-    // 보기 생성
     options = [ans];
     while(options.length < 4) {
         let fake = ans + (Math.floor(Math.random() * 6) - 3);
@@ -122,8 +130,12 @@ function generateProblem() {
     });
 }
 
-function drawChordAndPerpendicular(cx, cy, hY, halfL, rVal, dVal) {
-    const ax = cx - halfL, bx = cx + halfL;
+function drawChord(cx, cy, R_pixel, mathR, mathD, mathX, rText, dText) {
+    let scale = R_pixel / mathR;
+    let d_p = mathD * scale;
+    let halfL_p = mathX * scale;
+    let hY = cy + d_p;
+    let ax = cx - halfL_p, bx = cx + halfL_p;
     
     // 현 AB
     ctx.beginPath();
@@ -151,9 +163,9 @@ function drawChordAndPerpendicular(cx, cy, hY, halfL, rVal, dVal) {
     ctx.fillText("H", cx + 5, hY - 2);
 
     ctx.fillStyle = '#1976d2';
-    ctx.fillText(`r=${rVal}`, cx - 55, cy - 10);
+    ctx.fillText(`r=${rText}`, cx - 55, cy - 10);
     ctx.fillStyle = '#d32f2f';
-    ctx.fillText(`${dVal}`, cx + 6, cy + (hY - cy)/2);
+    ctx.fillText(`${dText}`, cx + 6, cy + d_p / 2);
 }
 
 function check(val) {
